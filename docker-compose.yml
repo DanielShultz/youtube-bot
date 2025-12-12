@@ -1,0 +1,38 @@
+services:
+  yt-dlp:
+    image: jauderho/yt-dlp:latest
+    container_name: yt-dlp
+    user: "1000:1000"
+    environment:
+      - TZ=Europe/Moscow
+    volumes:
+      - /home/daniel/media:/media
+      - /home/daniel/docker/yt-dlp:/config
+    working_dir: /media
+    restart: unless-stopped
+    networks:
+      - bot-network
+
+  telegram-bot:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: telegram-bot
+    env_file:
+      - .env
+    environment:
+      - TZ=Europe/Moscow
+      - BOT_TOKEN=${BOT_TOKEN}
+    volumes:
+      - /home/daniel/media:/media
+      - /home/daniel/docker/bot-stack/bot-data:/app/data
+      - ./cookies.txt:/app/cookies.txt
+      - ./bot.py:/app/bot.py
+    working_dir: /app
+    restart: unless-stopped
+    networks:
+      - bot-network
+
+networks:
+  bot-network:
+    driver: bridge
