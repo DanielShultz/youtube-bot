@@ -13,21 +13,20 @@ services:
     networks:
       - bot-network
 
-  telegram-bot:
-    build: 
+  kachalnaya_pepega:
+    build:
       context: .
       dockerfile: Dockerfile
-    container_name: telegram-bot
+    container_name: kachalnaya-pepega
     env_file:
       - .env
     environment:
       - TZ=Europe/Moscow
-      - BOT_TOKEN=${BOT_TOKEN}
     volumes:
       - /home/daniel/media:/media
       - /home/daniel/docker/bot-stack/bot-data:/app/data
       - ./cookies.txt:/app/cookies.txt
-      - ./bot.py:/app/bot.py
+      - ./kachalnaya_pepega:/app/kachalnaya_pepega
     working_dir: /app
     restart: unless-stopped
     networks:
