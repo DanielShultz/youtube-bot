@@ -27,7 +27,7 @@ def _parse_parts(text: str) -> list[str]:
         return text.strip().split()
 
 
-def _is_youtube_url(url: str) -> bool:
+def is_youtube_url(url: str) -> bool:
     """Проверяет, что ссылка относится к YouTube."""
     return "youtube.com" in url or "youtu.be" in url
 
@@ -37,7 +37,7 @@ def parse_user_input(text: str, default_video_type: str) -> DownloadRequest | No
     if not text or not text.strip():
         return None
     parts = _parse_parts(text)
-    if not parts or not _is_youtube_url(parts[0]):
+    if not parts or not is_youtube_url(parts[0]):
         return None
     artist = parts[1] if len(parts) > 1 else "Various"
     title = parts[2] if len(parts) > 2 else "Unknown"

@@ -1,6 +1,6 @@
 import unittest
 
-from kachalnaya_pepega.config import Settings, _parse_allowed_users, load_settings
+from kachalnaya_pepega.config import Settings, _parse_allowed_user_ids, load_settings
 from kachalnaya_pepega.messages import (
     build_compressed_caption,
     build_compression_failed_message,
@@ -16,8 +16,8 @@ from unittest.mock import patch
 
 
 class ConfigAndMessagesTests(unittest.TestCase):
-    def test_parse_allowed_users_skips_empty_values(self) -> None:
-        self.assertEqual(_parse_allowed_users('1,2,,3'), [1, 2, 3])
+    def test_parse_allowed_user_ids_skips_empty_values(self) -> None:
+        self.assertEqual(_parse_allowed_user_ids('1,2,,3'), [1, 2, 3])
 
     def test_load_settings_reads_environment(self) -> None:
         env = {'BOT_TOKEN': 'abc', 'ALLOWED_USER_IDS': '10,11'}
@@ -25,7 +25,7 @@ class ConfigAndMessagesTests(unittest.TestCase):
             settings = load_settings()
         self.assertEqual(settings.bot_name, 'Качальная Пепега')
         self.assertEqual(settings.bot_token, 'abc')
-        self.assertEqual(settings.allowed_users, [10, 11])
+        self.assertEqual(settings.allowed_user_ids, [10, 11])
 
     def test_start_message_contains_bot_name(self) -> None:
         settings = Settings('Качальная Пепега', 't', [1], '/c', '/m', 1, 1, 'Music Video')

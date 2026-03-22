@@ -4,10 +4,10 @@ services:
     container_name: yt-dlp
     user: "1000:1000"
     environment:
-      - TZ=Europe/Moscow
+      - TZ=${TZ}
     volumes:
-      - /home/daniel/media:/media
-      - /home/daniel/docker/yt-dlp:/config
+      - ${MEDIA_DIR}:/media
+      - ${YTDLP_CONFIG_DIR}:/config
     working_dir: /media
     restart: unless-stopped
     networks:
@@ -21,11 +21,11 @@ services:
     env_file:
       - .env
     environment:
-      - TZ=Europe/Moscow
+      - TZ=${TZ}
     volumes:
-      - /home/daniel/media:/media
-      - /home/daniel/docker/bot-stack/bot-data:/app/data
-      - ./cookies.txt:/app/cookies.txt
+      - ${MEDIA_DIR}:/media
+      - ${BOT_DATA_DIR}:/app/data
+      - ${COOKIES_FILE}:/app/cookies.txt
       - ./kachalnaya_pepega:/app/kachalnaya_pepega
     working_dir: /app
     restart: unless-stopped

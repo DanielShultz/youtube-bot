@@ -17,7 +17,7 @@ class MediaPaths:
     safe_title: str
     safe_type: str
     filename: str
-    original_file: str
+    expected_original_file: str
     compressed_file: str
 
 
@@ -44,6 +44,6 @@ def build_media_paths(base_path: str, artist: str, title: str, video_type: str) 
         safe_title=safe_title,
         safe_type=safe_type,
         filename=filename,
-        original_file=os.path.join(full_path, f"{filename}.mp4"),
+        expected_original_file=os.path.join(full_path, f"{filename}.mp4"),
         compressed_file=os.path.join(full_path, f"{filename}_telegram.mp4"),
     )

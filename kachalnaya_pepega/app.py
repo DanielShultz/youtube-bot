@@ -169,7 +169,7 @@ class KachalnayaPepegaBot:
     async def _is_authorized(self, update: Update) -> bool:
         """Проверяет доступ пользователя."""
         user_id = update.effective_user.id
-        if user_id in self.settings.allowed_users:
+        if user_id in self.settings.allowed_user_ids:
             return True
         await update.message.reply_text("❌ Доступ запрещен")
         logger.warning("Неавторизованный доступ от пользователя %s", user_id)

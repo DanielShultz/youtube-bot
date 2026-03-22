@@ -4,6 +4,8 @@ import logging
 import os
 import subprocess
 
+from .parsing import is_youtube_url
+
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +18,7 @@ class YouTubeDownloader:
 
     def download(self, url: str, output_path: str) -> dict[str, str | bool | None]:
         """Загружает видео и возвращает путь к файлу."""
-        if not self._is_youtube_url(url):
+        if not is_youtube_url(url):
             return self._failure("Неверный YouTube URL")
         command = self._build_command(url, output_path)
         try:
@@ -66,11 +68,6 @@ class YouTubeDownloader:
             if file_name.endswith((".mp4", ".mkv", ".webm")):
                 return os.path.join(directory, file_name)
         return None
-
-    @staticmethod
-    def _is_youtube_url(url: str) -> bool:
-        """Проверяет, что ссылка относится к YouTube."""
-        return "youtube.com" in url or "youtu.be" in url
 
     @staticmethod
     def _extract_error(result: subprocess.CompletedProcess[str]) -> str:

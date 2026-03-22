@@ -33,13 +33,26 @@ Telegram-бот для скачивания YouTube-видео и подгото
 
 1. Скопировать `.env.example` в `.env`
 2. Заполнить `BOT_TOKEN` и `ALLOWED_USER_IDS`
-3. Положить рабочий `cookies.txt` в корень проекта
-4. Запустить `docker compose up -d --build`
+3. Проверить пути `MEDIA_DIR`, `YTDLP_CONFIG_DIR`, `BOT_DATA_DIR` и `COOKIES_FILE`
+4. Положить рабочий `cookies.txt` в корень проекта
+5. Запустить `docker compose up -d --build`
 
 ## Запуск
 
 - локально: `python -m kachalnaya_pepega.main`
 - через Docker: `docker compose up -d --build`
+
+## Переменные окружения
+
+Обязательные настройки в `.env`:
+
+- `BOT_TOKEN`
+- `ALLOWED_USER_IDS`
+- `TZ`
+- `MEDIA_DIR`
+- `YTDLP_CONFIG_DIR`
+- `BOT_DATA_DIR`
+- `COOKIES_FILE`
 
 ## Тесты
 

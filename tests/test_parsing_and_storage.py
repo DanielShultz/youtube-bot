@@ -2,7 +2,7 @@ import shutil
 import unittest
 from pathlib import Path
 
-from kachalnaya_pepega.parsing import parse_user_input
+from kachalnaya_pepega.parsing import is_youtube_url, parse_user_input
 from kachalnaya_pepega.storage import build_media_paths, sanitize_component
 
 
@@ -34,6 +34,11 @@ class ParsingAndStorageTests(unittest.TestCase):
         self.assertIsNone(parse_user_input('', 'Default'))
         self.assertIsNone(parse_user_input('https://example.com/video', 'Default'))
 
+    def test_is_youtube_url_accepts_expected_hosts(self) -> None:
+        self.assertTrue(is_youtube_url('https://youtube.com/watch?v=1'))
+        self.assertTrue(is_youtube_url('https://youtu.be/test'))
+        self.assertFalse(is_youtube_url('https://example.com/video'))
+
     def test_sanitize_component_replaces_invalid_characters(self) -> None:
         self.assertEqual(sanitize_component('A:B/C*D'), 'A_B_C_D')
 
@@ -44,3 +49,4 @@ class ParsingAndStorageTests(unittest.TestCase):
         self.assertEqual(paths.safe_type, 'Live_')
         self.assertTrue(Path(paths.full_path).exists())
         self.assertIn('A_B - C_D - Live_', paths.filename)
+        self.assertTrue(paths.expected_original_file.endswith('.mp4'))
