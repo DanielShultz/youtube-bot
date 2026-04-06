@@ -1,4 +1,4 @@
-"""Конфигурация бота."""
+﻿"""Конфигурация бота."""
 
 from dataclasses import dataclass
 import os
@@ -13,6 +13,7 @@ class Settings:
     allowed_user_ids: list[int]
     cookies_path: str
     media_base_path: str
+    bot_data_path: str
     telegram_max_size: int
     compression_timeout: int
     default_video_type: str
@@ -31,6 +32,7 @@ def load_settings() -> Settings:
         allowed_user_ids=_parse_allowed_user_ids(os.getenv("ALLOWED_USER_IDS", "")),
         cookies_path="/app/cookies.txt",
         media_base_path="/media/music-videos",
+        bot_data_path="/app/data",
         telegram_max_size=45 * 1024 * 1024,
         compression_timeout=300,
         default_video_type="Music Video",

@@ -1,4 +1,4 @@
-import shutil
+﻿import shutil
 import unittest
 from pathlib import Path
 
@@ -43,10 +43,12 @@ class ParsingAndStorageTests(unittest.TestCase):
         self.assertEqual(sanitize_component('A:B/C*D'), 'A_B_C_D')
 
     def test_build_media_paths_creates_structure(self) -> None:
-        paths = build_media_paths(str(self.temp_root), 'A/B', 'C:D', 'Live?')
+        paths = build_media_paths(str(self.temp_root), 'Rock / Metal', 'A/B', 'C:D', 'Live?')
+        self.assertEqual(paths.safe_genre, 'Rock _ Metal')
         self.assertEqual(paths.safe_artist, 'A_B')
         self.assertEqual(paths.safe_title, 'C_D')
         self.assertEqual(paths.safe_type, 'Live_')
         self.assertTrue(Path(paths.full_path).exists())
         self.assertIn('A_B - C_D - Live_', paths.filename)
         self.assertTrue(paths.expected_original_file.endswith('.mp4'))
+        self.assertIn('Rock _ Metal/A_B/C_D', paths.relative_path)

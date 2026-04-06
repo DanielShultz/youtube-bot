@@ -1,4 +1,4 @@
-import unittest
+﻿import unittest
 
 from kachalnaya_pepega.config import Settings, _parse_allowed_user_ids, load_settings
 from kachalnaya_pepega.messages import (
@@ -26,9 +26,10 @@ class ConfigAndMessagesTests(unittest.TestCase):
         self.assertEqual(settings.bot_name, 'Качальная Пепега')
         self.assertEqual(settings.bot_token, 'abc')
         self.assertEqual(settings.allowed_user_ids, [10, 11])
+        self.assertEqual(settings.bot_data_path, '/app/data')
 
     def test_start_message_contains_bot_name(self) -> None:
-        settings = Settings('Качальная Пепега', 't', [1], '/c', '/m', 1, 1, 'Music Video')
+        settings = Settings('Качальная Пепега', 't', [1], '/c', '/m', '/d', 1, 1, 'Music Video')
         self.assertIn('Качальная Пепега', build_start_message(settings))
 
     def test_download_and_ready_messages_include_fields(self) -> None:

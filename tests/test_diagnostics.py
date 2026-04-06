@@ -1,8 +1,9 @@
-import unittest
+﻿import unittest
+
+from unittest.mock import Mock, patch
 
 from kachalnaya_pepega.config import Settings
 from kachalnaya_pepega.diagnostics import _read_command_output, collect_status_lines
-from unittest.mock import Mock, patch
 
 
 class DiagnosticsTests(unittest.TestCase):
@@ -19,7 +20,7 @@ class DiagnosticsTests(unittest.TestCase):
         self.assertEqual(output, 'не доступен')
 
     def test_collect_status_lines_reports_cookies(self) -> None:
-        settings = Settings('Бот', 'token', [1], '/tmp/cookies', '/media', 45 * 1024 * 1024, 300, 'MV')
+        settings = Settings('Бот', 'token', [1], '/tmp/cookies', '/media', '/data', 45 * 1024 * 1024, 300, 'MV')
         with patch('kachalnaya_pepega.diagnostics._read_command_output', side_effect=['1', '2', '3']):
             with patch('kachalnaya_pepega.diagnostics.os.path.exists', return_value=True):
                 lines = collect_status_lines(settings)
