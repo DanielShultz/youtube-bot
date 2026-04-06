@@ -1,4 +1,4 @@
-import shutil
+﻿import shutil
 import subprocess
 import unittest
 from pathlib import Path
@@ -9,7 +9,7 @@ from unittest.mock import Mock, patch
 
 class DownloaderTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.temp_root = Path('D:/Сервер/docker-projects/youtube-bot/.tmp-tests/downloader')
+        self.temp_root = Path('.tmp-tests/downloader')
         if self.temp_root.exists():
             shutil.rmtree(self.temp_root)
         self.temp_root.mkdir(parents=True, exist_ok=True)
@@ -50,3 +50,11 @@ class DownloaderTests(unittest.TestCase):
         video_path.write_text('x', encoding='utf-8')
         found = downloader._find_downloaded_file(str(self.temp_root / 'missing'))
         self.assertTrue(found.endswith('video.mp4'))
+
+    def test_extract_error_formats_unavailable_video(self) -> None:
+        process = Mock(
+            stderr='ERROR: [youtube] b8m9zhNAgKs: Video unavailable. This video is not available',
+            stdout='',
+        )
+        message = YouTubeDownloader._extract_error(process)
+        self.assertEqual(message, 'Видео недоступно на YouTube: удалено, скрыто или ограничено.')

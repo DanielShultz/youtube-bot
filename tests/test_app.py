@@ -1,4 +1,4 @@
-﻿import os
+import os
 import sys
 import tempfile
 import types
@@ -11,6 +11,8 @@ telegram_module = types.ModuleType('telegram')
 telegram_module.Update = type('FakeUpdate', (), {'ALL_TYPES': object()})
 telegram_module.InlineKeyboardButton = lambda text, callback_data=None: ('button', text, callback_data)
 telegram_module.InlineKeyboardMarkup = lambda rows: ('markup', rows)
+telegram_error_module = types.ModuleType('telegram.error')
+telegram_error_module.TimedOut = type('TimedOut', (Exception,), {})
 telegram_ext_module = types.ModuleType('telegram.ext')
 telegram_ext_module.ContextTypes = SimpleNamespace(DEFAULT_TYPE=object)
 telegram_ext_module.filters = SimpleNamespace(TEXT=1, COMMAND=2)
@@ -19,7 +21,10 @@ telegram_ext_module.MessageHandler = lambda *args, **kwargs: ('message', args)
 telegram_ext_module.CallbackQueryHandler = lambda *args, **kwargs: ('callback', args, kwargs)
 telegram_ext_module.Application = object
 sys.modules.setdefault('telegram', telegram_module)
+sys.modules.setdefault('telegram.error', telegram_error_module)
 sys.modules.setdefault('telegram.ext', telegram_ext_module)
+
+from telegram.error import TimedOut
 
 from kachalnaya_pepega.app import KachalnayaPepegaBot, PENDING_REQUEST_KEY
 from kachalnaya_pepega.config import Settings
@@ -92,7 +97,7 @@ class FakeGenreCatalog:
 
 class AppTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
-        settings = Settings('Бот', 'token', [1], '/cookies', '/media', '/data', 10, 1, 'MV')
+        settings = Settings('???', 'token', [1], '/cookies', '/media', '/data', 10, 1, 600, 60, 60, 'MV')
         self.bot = KachalnayaPepegaBot(settings)
         self.bot.genre_catalog = FakeGenreCatalog('MV')
 
@@ -171,13 +176,43 @@ class AppTests(unittest.IsolatedAsyncioTestCase):
         with tempfile.NamedTemporaryFile(delete=False) as file:
             file.write(b'abc')
             file_path = file.name
-        with patch.object(self.bot, '_send_original_video', new=AsyncMock()) as send_original:
-            await self.bot._handle_downloaded_file(message, request, paths, file_path)
-        self.bot.settings = Settings('Бот', 'token', [1], '/cookies', '/media', '/data', 1, 1, 'MV')
+        with patch.object(self.bot, '_send_original_video', new=Mock(return_value=object())) as send_original:
+            with patch.object(self.bot, '_run_background_task') as run_background_task:
+                await self.bot._handle_downloaded_file(message, request, paths, file_path)
+        self.bot.settings = Settings('???', 'token', [1], '/cookies', '/media', '/data', 1, 1, 600, 60, 60, 'MV')
         with patch.object(self.bot, '_send_compressed_video', new=AsyncMock()) as send_compressed:
             await self.bot._handle_downloaded_file(message, request, paths, file_path)
-        send_original.assert_awaited_once()
+        send_original.assert_called_once()
+        run_background_task.assert_called_once()
         send_compressed.assert_awaited_once()
+        os.remove(file_path)
+
+    async def test_send_original_video_uses_extended_timeouts(self) -> None:
+        message = FakeMessage()
+        request = DownloadRequest('u', 'a', 'b', 'c')
+        paths = MediaPaths('/tmp', 'a/b', 'g', 'a', 'b', 'c', 'f', '/tmp/f.mp4', '/tmp/f_t.mp4')
+        with tempfile.NamedTemporaryFile(delete=False) as file:
+            file.write(b'abc')
+            file_path = file.name
+        await self.bot._send_original_video(message, request, paths, file_path, 3)
+        _, kwargs = message.reply_video.await_args
+        self.assertEqual(kwargs['write_timeout'], 600)
+        self.assertEqual(kwargs['read_timeout'], 600)
+        self.assertEqual(kwargs['connect_timeout'], 60)
+        self.assertEqual(kwargs['pool_timeout'], 60)
+        os.remove(file_path)
+
+    async def test_send_original_video_reports_upload_timeout(self) -> None:
+        message = FakeMessage()
+        request = DownloadRequest('u', 'a', 'b', 'c')
+        paths = MediaPaths('/tmp', 'a/b', 'g', 'a', 'b', 'c', 'f', '/tmp/f.mp4', '/tmp/f_t.mp4')
+        with tempfile.NamedTemporaryFile(delete=False) as file:
+            file.write(b'abc')
+            file_path = file.name
+        message.reply_video.side_effect = TimedOut('Timed out')
+        await self.bot._send_original_video(message, request, paths, file_path, 3)
+        message.reply_text.assert_awaited_once()
+        self.assertIn('a/b', message.reply_text.await_args.args[0])
         os.remove(file_path)
 
     async def test_send_compressed_video_handles_timeout_and_failure(self) -> None:
@@ -202,10 +237,29 @@ class AppTests(unittest.IsolatedAsyncioTestCase):
         paths = MediaPaths('/tmp', 'a/b', 'g', 'a', 'b', 'c', 'f', '/tmp/f.mp4', temp_path)
         await self.bot._reply_with_compressed_video(message, request, paths, 100)
         message.reply_video.assert_awaited_once()
+        _, kwargs = message.reply_video.await_args
+        self.assertEqual(kwargs['write_timeout'], 600)
+        self.assertEqual(kwargs['read_timeout'], 600)
+        self.assertEqual(kwargs['connect_timeout'], 60)
+        self.assertEqual(kwargs['pool_timeout'], 60)
         message.reply_text.assert_awaited_once()
+        self.assertFalse(os.path.exists(temp_path))
+
+    async def test_reply_with_compressed_video_reports_upload_timeout(self) -> None:
+        message = FakeMessage()
+        request = DownloadRequest('u', 'a', 'b', 'c')
+        with tempfile.NamedTemporaryFile(delete=False) as file:
+            file.write(b'abc')
+            temp_path = file.name
+        paths = MediaPaths('/tmp', 'a/b', 'g', 'a', 'b', 'c', 'f', '/tmp/f.mp4', temp_path)
+        message.reply_video.side_effect = TimedOut('Timed out')
+        await self.bot._reply_with_compressed_video(message, request, paths, 100)
+        message.reply_text.assert_awaited_once()
+        self.assertIn('a/b', message.reply_text.await_args.args[0])
+        self.assertFalse(os.path.exists(temp_path))
 
     def test_run_without_token_raises_error(self) -> None:
-        bot = KachalnayaPepegaBot(Settings('Бот', '', [1], '/c', '/m', '/d', 10, 1, 'MV'))
+        bot = KachalnayaPepegaBot(Settings('???', '', [1], '/c', '/m', '/d', 10, 1, 600, 60, 60, 'MV'))
         with self.assertRaises(RuntimeError):
             bot.run()
 
@@ -213,7 +267,7 @@ class AppTests(unittest.IsolatedAsyncioTestCase):
         fake_app = FakeApplication()
         fake_builder = FakeBuilder(fake_app)
         fake_application = type('FakeApplicationType', (), {'builder': staticmethod(lambda: fake_builder)})
-        bot = KachalnayaPepegaBot(Settings('Бот', 'token', [1], '/c', '/m', '/d', 10, 1, 'MV'))
+        bot = KachalnayaPepegaBot(Settings('???', 'token', [1], '/c', '/m', '/d', 10, 1, 600, 60, 60, 'MV'))
         with patch('kachalnaya_pepega.app.Application', fake_application):
             bot.run()
         self.assertEqual(len(fake_app.handlers), 4)

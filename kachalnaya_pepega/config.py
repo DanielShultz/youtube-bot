@@ -16,12 +16,24 @@ class Settings:
     bot_data_path: str
     telegram_max_size: int
     compression_timeout: int
+    telegram_upload_timeout: int
+    telegram_connect_timeout: int
+    telegram_pool_timeout: int
     default_video_type: str
 
 
 def _parse_allowed_user_ids(value: str) -> list[int]:
     """Преобразует строку с id пользователей в список чисел."""
     return [int(item) for item in value.split(",") if item.strip()]
+
+
+def _get_int_env(name: str, default: int) -> int:
+    """Читает целочисленную настройку из окружения с fallback по умолчанию."""
+    raw_value = os.getenv(name, str(default)).strip()
+    try:
+        return int(raw_value)
+    except ValueError:
+        return default
 
 
 def load_settings() -> Settings:
@@ -35,5 +47,10 @@ def load_settings() -> Settings:
         bot_data_path="/app/data",
         telegram_max_size=45 * 1024 * 1024,
         compression_timeout=300,
+        telegram_upload_timeout=_get_int_env('TELEGRAM_UPLOAD_TIMEOUT', 600),
+        telegram_connect_timeout=_get_int_env('TELEGRAM_CONNECT_TIMEOUT', 60),
+        telegram_pool_timeout=_get_int_env('TELEGRAM_POOL_TIMEOUT', 60),
         default_video_type="Music Video",
     )
+
+

@@ -1,4 +1,4 @@
-"""Подготовка видео под лимиты Telegram."""
+﻿"""Подготовка видео под лимиты Telegram."""
 
 import logging
 import os

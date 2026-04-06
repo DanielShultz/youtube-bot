@@ -1,4 +1,4 @@
-"""Точка входа сервиса."""
+﻿"""Точка входа сервиса."""
 
 import logging
 
@@ -10,7 +10,7 @@ def configure_logging() -> None:
     """Настраивает логирование приложения."""
     logging.basicConfig(
         level=logging.INFO,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     )
 
 
@@ -20,5 +20,5 @@ def main() -> None:
     KachalnayaPepegaBot(load_settings()).run()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
