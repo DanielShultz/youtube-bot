@@ -2,9 +2,9 @@
 import subprocess
 import unittest
 from pathlib import Path
+from unittest.mock import Mock, patch
 
 from kachalnaya_pepega.downloader import YouTubeDownloader
-from unittest.mock import Mock, patch
 
 
 class DownloaderTests(unittest.TestCase):
@@ -23,6 +23,8 @@ class DownloaderTests(unittest.TestCase):
         with patch('kachalnaya_pepega.downloader.os.path.exists', return_value=True):
             command = downloader._build_command('https://youtu.be/test', '/tmp/out')
         self.assertIn('--cookies', command)
+        self.assertIn('--write-thumbnail', command)
+        self.assertIn('--convert-thumbnails', command)
 
     def test_download_rejects_non_youtube_url(self) -> None:
         downloader = YouTubeDownloader('/tmp/cookies.txt')
@@ -38,9 +40,11 @@ class DownloaderTests(unittest.TestCase):
     def test_download_returns_file_when_found(self) -> None:
         downloader = YouTubeDownloader('/tmp/cookies.txt')
         process = Mock(returncode=0, stderr='', stdout='')
-        with patch('kachalnaya_pepega.downloader.subprocess.run', return_value=process):
-            with patch.object(downloader, '_find_downloaded_file', return_value='/tmp/video.mp4'):
-                result = downloader.download('https://youtu.be/test', '/tmp/out')
+        with (
+            patch('kachalnaya_pepega.downloader.subprocess.run', return_value=process),
+            patch.object(downloader, '_find_downloaded_file', return_value='/tmp/video.mp4'),
+        ):
+            result = downloader.download('https://youtu.be/test', '/tmp/out')
         self.assertTrue(result['success'])
         self.assertEqual(result['file_path'], '/tmp/video.mp4')
 
@@ -50,6 +54,19 @@ class DownloaderTests(unittest.TestCase):
         video_path.write_text('x', encoding='utf-8')
         found = downloader._find_downloaded_file(str(self.temp_root / 'missing'))
         self.assertTrue(found.endswith('video.mp4'))
+
+    def test_cleanup_sidecars_removes_download_junk(self) -> None:
+        base_path = str(self.temp_root / 'video')
+        sidecar = self.temp_root / 'video.part'
+        preview = self.temp_root / 'video.jpg'
+        keep = self.temp_root / 'video.mp4'
+        sidecar.write_text('x', encoding='utf-8')
+        preview.write_text('x', encoding='utf-8')
+        keep.write_text('x', encoding='utf-8')
+        YouTubeDownloader._cleanup_sidecars(base_path)
+        self.assertFalse(sidecar.exists())
+        self.assertTrue(preview.exists())
+        self.assertTrue(keep.exists())
 
     def test_extract_error_formats_unavailable_video(self) -> None:
         process = Mock(

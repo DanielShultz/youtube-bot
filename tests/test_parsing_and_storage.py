@@ -1,4 +1,4 @@
-﻿import shutil
+import shutil
 import unittest
 from pathlib import Path
 
@@ -8,7 +8,7 @@ from kachalnaya_pepega.storage import build_media_paths, sanitize_component
 
 class ParsingAndStorageTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.temp_root = Path('D:/Сервер/docker-projects/youtube-bot/.tmp-tests/storage')
+        self.temp_root = Path('.tmp-tests/storage')
         if self.temp_root.exists():
             shutil.rmtree(self.temp_root)
         self.temp_root.mkdir(parents=True, exist_ok=True)

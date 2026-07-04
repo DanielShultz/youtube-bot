@@ -1,18 +1,4 @@
 services:
-  yt-dlp:
-    image: jauderho/yt-dlp:latest
-    container_name: yt-dlp
-    user: "1000:1000"
-    environment:
-      - TZ=${TZ}
-    volumes:
-      - ${MEDIA_DIR}:/media
-      - ${YTDLP_CONFIG_DIR}:/config
-    working_dir: /media
-    restart: unless-stopped
-    networks:
-      - bot-network
-
   kachalnaya_pepega:
     build:
       context: .
@@ -29,9 +15,3 @@ services:
       - ./kachalnaya_pepega:/app/kachalnaya_pepega
     working_dir: /app
     restart: unless-stopped
-    networks:
-      - bot-network
-
-networks:
-  bot-network:
-    driver: bridge

@@ -1,5 +1,4 @@
 ﻿import unittest
-
 from unittest.mock import patch
 
 from kachalnaya_pepega.config import Settings, _parse_allowed_user_ids, load_settings

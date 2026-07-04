@@ -18,7 +18,8 @@ class ParsingTests(unittest.TestCase):
 
     def test_parse_user_input_uses_normalized_url(self) -> None:
         request = parse_user_input(
-            'https://www.youtube.com/watch?v=ST9ib_nbizU&list=RDST9ib_nbizU&start_radio=1 "ATEEZ" "Ice On My Teeth" "Live 2024 MBC"',
+            'https://www.youtube.com/watch?v=ST9ib_nbizU&list=RDST9ib_nbizU&start_radio=1 '
+            '"ATEEZ" "Ice On My Teeth" "Live 2024 MBC"',
             'MV',
         )
         self.assertIsNotNone(request)

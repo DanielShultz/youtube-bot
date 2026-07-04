@@ -1,10 +1,9 @@
 ﻿"""Парсинг пользовательского ввода."""
 
-from dataclasses import dataclass
 import logging
 import shlex
+from dataclasses import dataclass
 from urllib.parse import parse_qs, urlparse
-
 
 logger = logging.getLogger(__name__)
 

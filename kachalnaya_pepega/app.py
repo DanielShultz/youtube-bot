@@ -1,9 +1,9 @@
 ﻿"""Основная логика Telegram-бота."""
 
 import asyncio
-from dataclasses import asdict, replace
 import logging
 import os
+from dataclasses import asdict, replace
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.error import TimedOut
@@ -28,7 +28,6 @@ from .messages import (
 from .parsing import DownloadRequest, parse_user_input
 from .storage import MediaPaths, build_media_paths
 
-
 logger = logging.getLogger(__name__)
 PENDING_REQUEST_KEY = 'pending_download_request'
 
@@ -42,7 +41,6 @@ class KachalnayaPepegaBot:
         self.downloader = YouTubeDownloader(settings.cookies_path)
         self.compressor = VideoCompressor(settings.telegram_max_size)
         self.genre_catalog = GenreCatalog(settings.bot_data_path)
-        self._background_tasks: set[asyncio.Task] = set()
 
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Отправляет стартовую инструкцию."""
@@ -125,18 +123,29 @@ class KachalnayaPepegaBot:
             logger.exception('Ошибка обработки загрузки')
             await message.reply_text(f"❌ Ошибка: {str(error)[:500]}")
 
-    async def _handle_downloaded_file(self, message, request: DownloadRequest, media_paths: MediaPaths, original_file: str) -> None:
+    async def _handle_downloaded_file(
+        self,
+        message,
+        request: DownloadRequest,
+        media_paths: MediaPaths,
+        original_file: str,
+    ) -> None:
         """Выбирает сценарий отправки после загрузки оригинала."""
         original_size = os.path.getsize(original_file)
         await message.reply_text(build_original_ready_message(format_file_size(original_size)))
         if original_size <= self.settings.telegram_max_size:
-            self._run_background_task(
-                self._send_original_video(message, request, media_paths, original_file, original_size)
-            )
+            await self._send_original_video(message, request, media_paths, original_file, original_size)
             return
         await self._send_compressed_video(message, request, media_paths, original_file, original_size)
 
-    async def _send_original_video(self, message, request: DownloadRequest, media_paths: MediaPaths, original_file: str, original_size: int) -> None:
+    async def _send_original_video(
+        self,
+        message,
+        request: DownloadRequest,
+        media_paths: MediaPaths,
+        original_file: str,
+        original_size: int,
+    ) -> None:
         """Отправляет файл без дополнительного сжатия."""
         try:
             with open(original_file, 'rb') as video_file:
@@ -158,7 +167,14 @@ class KachalnayaPepegaBot:
             logger.exception('Ошибка отправки оригинала в Telegram')
             await message.reply_text(f"❌ Ошибка отправки в Telegram: {str(error)[:500]}")
 
-    async def _send_compressed_video(self, message, request: DownloadRequest, media_paths: MediaPaths, original_file: str, original_size: int) -> None:
+    async def _send_compressed_video(
+        self,
+        message,
+        request: DownloadRequest,
+        media_paths: MediaPaths,
+        original_file: str,
+        original_size: int,
+    ) -> None:
         """Сжимает файл и отправляет его в Telegram."""
         try:
             compressed = await asyncio.wait_for(
@@ -166,19 +182,25 @@ class KachalnayaPepegaBot:
                 timeout=self.settings.compression_timeout,
             )
             if not compressed or not os.path.exists(media_paths.compressed_file):
+                self._remove_file(media_paths.compressed_file)
                 await message.reply_text(
                     build_compression_failed_message(media_paths.relative_path, format_file_size(original_size))
                 )
                 return
-            self._run_background_task(
-                self._reply_with_compressed_video(message, request, media_paths, original_size)
-            )
-        except asyncio.TimeoutError:
+            await self._reply_with_compressed_video(message, request, media_paths, original_size)
+        except TimeoutError:
+            self._remove_file(media_paths.compressed_file)
             await message.reply_text(
                 build_timeout_message(media_paths.relative_path, format_file_size(original_size))
             )
 
-    async def _reply_with_compressed_video(self, message, request: DownloadRequest, media_paths: MediaPaths, original_size: int) -> None:
+    async def _reply_with_compressed_video(
+        self,
+        message,
+        request: DownloadRequest,
+        media_paths: MediaPaths,
+        original_size: int,
+    ) -> None:
         """Отправляет сжатый файл и удаляет временную копию."""
         compressed_size = os.path.getsize(media_paths.compressed_file)
         try:
@@ -207,20 +229,6 @@ class KachalnayaPepegaBot:
         """Запускает сжатие в отдельном потоке."""
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, self.compressor.compress, original_file, compressed_file)
-
-    def _run_background_task(self, coroutine) -> None:
-        """Запускает неблокирующую фоновую задачу и следит за её ошибками."""
-        task = asyncio.create_task(coroutine)
-        self._background_tasks.add(task)
-        task.add_done_callback(self._finish_background_task)
-
-    def _finish_background_task(self, task: asyncio.Task) -> None:
-        """Снимает завершённую задачу с учёта и пишет неожиданные ошибки в лог."""
-        self._background_tasks.discard(task)
-        try:
-            task.result()
-        except Exception:
-            logger.exception('Фоновая задача завершилась с ошибкой')
 
     async def _is_authorized(self, update: Update) -> bool:
         """Проверяет доступ пользователя."""

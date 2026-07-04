@@ -1,32 +1,20 @@
-import os
-import sys
-import tempfile
-import types
-import unittest
+"""Тесты Telegram-бота."""
 
+# ruff: noqa: E402
+
+import os
+import tempfile
+import unittest
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
 
-telegram_module = types.ModuleType('telegram')
-telegram_module.Update = type('FakeUpdate', (), {'ALL_TYPES': object()})
-telegram_module.InlineKeyboardButton = lambda text, callback_data=None: ('button', text, callback_data)
-telegram_module.InlineKeyboardMarkup = lambda rows: ('markup', rows)
-telegram_error_module = types.ModuleType('telegram.error')
-telegram_error_module.TimedOut = type('TimedOut', (Exception,), {})
-telegram_ext_module = types.ModuleType('telegram.ext')
-telegram_ext_module.ContextTypes = SimpleNamespace(DEFAULT_TYPE=object)
-telegram_ext_module.filters = SimpleNamespace(TEXT=1, COMMAND=2)
-telegram_ext_module.CommandHandler = lambda *args, **kwargs: ('command', args)
-telegram_ext_module.MessageHandler = lambda *args, **kwargs: ('message', args)
-telegram_ext_module.CallbackQueryHandler = lambda *args, **kwargs: ('callback', args, kwargs)
-telegram_ext_module.Application = object
-sys.modules.setdefault('telegram', telegram_module)
-sys.modules.setdefault('telegram.error', telegram_error_module)
-sys.modules.setdefault('telegram.ext', telegram_ext_module)
+from fake_telegram import install_telegram_fakes
+
+install_telegram_fakes()
 
 from telegram.error import TimedOut
 
-from kachalnaya_pepega.app import KachalnayaPepegaBot, PENDING_REQUEST_KEY
+from kachalnaya_pepega.app import PENDING_REQUEST_KEY, KachalnayaPepegaBot
 from kachalnaya_pepega.config import Settings
 from kachalnaya_pepega.parsing import DownloadRequest
 from kachalnaya_pepega.storage import MediaPaths
@@ -116,9 +104,11 @@ class AppTests(unittest.IsolatedAsyncioTestCase):
     async def test_handle_download_processes_valid_request(self) -> None:
         update = SimpleNamespace(effective_user=SimpleNamespace(id=1), message=FakeMessage(), callback_query=None)
         request = DownloadRequest('u', 'ateez', 'b', 'c')
-        with patch('kachalnaya_pepega.app.parse_user_input', return_value=request):
-            with patch.object(self.bot, '_start_download', new=AsyncMock()) as start_download:
-                await self.bot.handle_download(update, SimpleNamespace(user_data={}))
+        with (
+            patch('kachalnaya_pepega.app.parse_user_input', return_value=request),
+            patch.object(self.bot, '_start_download', new=AsyncMock()) as start_download,
+        ):
+            await self.bot.handle_download(update, SimpleNamespace(user_data={}))
         start_download.assert_awaited_once_with(update.message, DownloadRequest('u', 'ATEEZ', 'b', 'c'), 'MV')
 
     async def test_handle_download_asks_for_genre_when_unknown_artist(self) -> None:
@@ -142,7 +132,11 @@ class AppTests(unittest.IsolatedAsyncioTestCase):
         with patch.object(self.bot, '_start_download', new=AsyncMock()) as start_download:
             await self.bot.handle_genre_choice(update, context)
         self.assertEqual(self.bot.genre_catalog.saved, [('New Artist', 'K-Hip-Hop - Asian Alt')])
-        start_download.assert_awaited_once_with(query.message, DownloadRequest('u', 'New Artist', 'Song', 'MV'), 'K-Hip-Hop - Asian Alt')
+        start_download.assert_awaited_once_with(
+            query.message,
+            DownloadRequest('u', 'New Artist', 'Song', 'MV'),
+            'K-Hip-Hop - Asian Alt',
+        )
         self.assertNotIn(PENDING_REQUEST_KEY, context.user_data)
 
     def test_with_canonical_artist_uses_catalog_name(self) -> None:
@@ -176,14 +170,12 @@ class AppTests(unittest.IsolatedAsyncioTestCase):
         with tempfile.NamedTemporaryFile(delete=False) as file:
             file.write(b'abc')
             file_path = file.name
-        with patch.object(self.bot, '_send_original_video', new=Mock(return_value=object())) as send_original:
-            with patch.object(self.bot, '_run_background_task') as run_background_task:
-                await self.bot._handle_downloaded_file(message, request, paths, file_path)
+        with patch.object(self.bot, '_send_original_video', new=AsyncMock()) as send_original:
+            await self.bot._handle_downloaded_file(message, request, paths, file_path)
         self.bot.settings = Settings('???', 'token', [1], '/cookies', '/media', '/data', 1, 1, 600, 60, 60, 'MV')
         with patch.object(self.bot, '_send_compressed_video', new=AsyncMock()) as send_compressed:
             await self.bot._handle_downloaded_file(message, request, paths, file_path)
-        send_original.assert_called_once()
-        run_background_task.assert_called_once()
+        send_original.assert_awaited_once()
         send_compressed.assert_awaited_once()
         os.remove(file_path)
 
@@ -218,14 +210,24 @@ class AppTests(unittest.IsolatedAsyncioTestCase):
     async def test_send_compressed_video_handles_timeout_and_failure(self) -> None:
         message = FakeMessage()
         request = DownloadRequest('u', 'a', 'b', 'c')
-        paths = MediaPaths('/tmp', 'a/b', 'g', 'a', 'b', 'c', 'f', '/tmp/f.mp4', '/tmp/f_t.mp4')
-        with patch.object(self.bot, '_compress_in_executor', new=Mock(return_value=object())):
-            with patch('kachalnaya_pepega.app.asyncio.wait_for', side_effect=TimeoutError()):
-                await self.bot._send_compressed_video(message, request, paths, '/tmp/in.mp4', 100)
-        with patch.object(self.bot, '_compress_in_executor', new=Mock(return_value=object())):
-            with patch('kachalnaya_pepega.app.asyncio.wait_for', new=AsyncMock(return_value=False)):
-                with patch('kachalnaya_pepega.app.os.path.exists', return_value=False):
-                    await self.bot._send_compressed_video(message, request, paths, '/tmp/in.mp4', 100)
+        with tempfile.NamedTemporaryFile(delete=False) as file:
+            timeout_path = file.name
+        paths = MediaPaths('/tmp', 'a/b', 'g', 'a', 'b', 'c', 'f', '/tmp/f.mp4', timeout_path)
+        with (
+            patch.object(self.bot, '_compress_in_executor', new=Mock(return_value=object())),
+            patch('kachalnaya_pepega.app.asyncio.wait_for', side_effect=TimeoutError()),
+        ):
+            await self.bot._send_compressed_video(message, request, paths, '/tmp/in.mp4', 100)
+        self.assertFalse(os.path.exists(timeout_path))
+        with tempfile.NamedTemporaryFile(delete=False) as file:
+            failure_path = file.name
+        paths = MediaPaths('/tmp', 'a/b', 'g', 'a', 'b', 'c', 'f', '/tmp/f.mp4', failure_path)
+        with (
+            patch.object(self.bot, '_compress_in_executor', new=Mock(return_value=object())),
+            patch('kachalnaya_pepega.app.asyncio.wait_for', new=AsyncMock(return_value=False)),
+        ):
+            await self.bot._send_compressed_video(message, request, paths, '/tmp/in.mp4', 100)
+        self.assertFalse(os.path.exists(failure_path))
         self.assertEqual(message.reply_text.await_count, 2)
 
     async def test_reply_with_compressed_video_sends_file(self) -> None:

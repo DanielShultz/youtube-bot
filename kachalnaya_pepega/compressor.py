@@ -5,8 +5,13 @@ import os
 import shutil
 import subprocess
 
-
 logger = logging.getLogger(__name__)
+COMPRESSION_PROFILES = (
+    (0.7, 720, 24, "fast"),
+    (0.4, 480, 26, "faster"),
+    (0.2, 360, 28, "veryfast"),
+    (0, 240, 30, "ultrafast"),
+)
 
 
 class VideoCompressor:
@@ -56,13 +61,13 @@ class VideoCompressor:
     def _calculate_settings(self, video_info: dict[str, int | float]) -> dict[str, str | int]:
         """Подбирает обычные параметры сжатия."""
         ratio = self.max_size / int(video_info["file_size"])
-        if ratio > 0.7:
-            return {"scale_height": min(720, int(video_info["height"])), "crf": 24, "preset": "fast", "audio_bitrate": "64k"}
-        if ratio > 0.4:
-            return {"scale_height": min(480, int(video_info["height"])), "crf": 26, "preset": "faster", "audio_bitrate": "64k"}
-        if ratio > 0.2:
-            return {"scale_height": min(360, int(video_info["height"])), "crf": 28, "preset": "veryfast", "audio_bitrate": "64k"}
-        return {"scale_height": min(240, int(video_info["height"])), "crf": 30, "preset": "ultrafast", "audio_bitrate": "64k"}
+        _threshold, scale_height, crf, preset = next(profile for profile in COMPRESSION_PROFILES if ratio > profile[0])
+        return {
+            "scale_height": min(scale_height, int(video_info["height"])),
+            "crf": crf,
+            "preset": preset,
+            "audio_bitrate": "64k",
+        }
 
     def _aggressive_settings(self) -> dict[str, str | int]:
         """Возвращает параметры агрессивного сжатия."""

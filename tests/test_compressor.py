@@ -1,15 +1,14 @@
-﻿import shutil
-import tempfile
+import shutil
 import unittest
 from pathlib import Path
+from unittest.mock import Mock, patch
 
 from kachalnaya_pepega.compressor import VideoCompressor
-from unittest.mock import Mock, patch
 
 
 class CompressorTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.temp_root = Path('D:/Сервер/docker-projects/youtube-bot/.tmp-tests/compressor')
+        self.temp_root = Path('.tmp-tests/compressor')
         if self.temp_root.exists():
             shutil.rmtree(self.temp_root)
         self.temp_root.mkdir(parents=True, exist_ok=True)
@@ -40,9 +39,11 @@ class CompressorTests(unittest.TestCase):
         compressor = VideoCompressor(100)
         input_path = self._make_file('big.mp4', 1000)
         output_path = str(self.temp_root / 'out.mp4')
-        with patch.object(compressor, '_get_video_info', return_value={'file_size': 1000, 'height': 1080}):
-            with patch.object(compressor, '_compress_video', return_value=False):
-                result = compressor.compress(input_path, output_path)
+        with (
+            patch.object(compressor, '_get_video_info', return_value={'file_size': 1000, 'height': 1080}),
+            patch.object(compressor, '_compress_video', return_value=False),
+        ):
+            result = compressor.compress(input_path, output_path)
         self.assertFalse(result)
 
     def test_compress_uses_aggressive_pass_for_large_result(self) -> None:
@@ -54,9 +55,11 @@ class CompressorTests(unittest.TestCase):
             Path(out).write_bytes(b'a' * 200)
             return True
 
-        with patch.object(compressor, '_get_video_info', return_value={'file_size': 1000, 'height': 1080}):
-            with patch.object(compressor, '_compress_video', side_effect=fake_compress) as compress_video:
-                result = compressor.compress(input_path, output_path)
+        with (
+            patch.object(compressor, '_get_video_info', return_value={'file_size': 1000, 'height': 1080}),
+            patch.object(compressor, '_compress_video', side_effect=fake_compress) as compress_video,
+        ):
+            result = compressor.compress(input_path, output_path)
         self.assertTrue(result)
         self.assertEqual(compress_video.call_count, 2)
 

@@ -1,8 +1,7 @@
 ﻿"""Работа с путями и именами файлов."""
 
-from dataclasses import dataclass
 import os
-
+from dataclasses import dataclass
 
 INVALID_FILENAME_CHARS = ['<', '>', ':', '"', '/', '\\', '|', '?', '*']
 

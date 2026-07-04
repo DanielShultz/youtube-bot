@@ -6,7 +6,6 @@ import subprocess
 
 from .parsing import is_youtube_url
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -24,15 +23,20 @@ class YouTubeDownloader:
         try:
             result = subprocess.run(command, capture_output=True, text=True, timeout=300)
             if result.returncode != 0:
+                self._cleanup_sidecars(output_path)
                 return self._failure(self._extract_error(result))
             file_path = self._find_downloaded_file(output_path)
             if not file_path:
+                self._cleanup_sidecars(output_path)
                 return self._failure('Файл не найден после загрузки')
+            self._cleanup_sidecars(output_path)
             return {'success': True, 'file_path': file_path, 'message': 'Загрузка успешна'}
         except subprocess.TimeoutExpired:
+            self._cleanup_sidecars(output_path)
             return self._failure('Таймаут загрузки (5 минут)')
         except Exception as error:
             logger.exception('Ошибка при загрузке видео')
+            self._cleanup_sidecars(output_path)
             return self._failure(f'Исключение: {str(error)[:200]}')
 
     def _build_command(self, url: str, output_path: str) -> list[str]:
@@ -68,6 +72,22 @@ class YouTubeDownloader:
             if file_name.endswith(('.mp4', '.mkv', '.webm')):
                 return os.path.join(directory, file_name)
         return None
+
+    @staticmethod
+    def _cleanup_sidecars(base_path: str) -> None:
+        """Удаляет служебные файлы yt-dlp рядом с ожидаемым видео."""
+        sidecar_suffixes = ('.part', '.tmp', '.temp', '.ytdl')
+        directory = os.path.dirname(base_path) or '.'
+        prefix = os.path.basename(base_path)
+        if not os.path.isdir(directory):
+            return
+        for file_name in os.listdir(directory):
+            if not file_name.startswith(prefix) or not file_name.endswith(sidecar_suffixes):
+                continue
+            try:
+                os.remove(os.path.join(directory, file_name))
+            except OSError:
+                logger.warning('Не удалось удалить служебный файл yt-dlp: %s', file_name)
 
     @staticmethod
     def _extract_error(result: subprocess.CompletedProcess[str]) -> str:

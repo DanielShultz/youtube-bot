@@ -1,8 +1,8 @@
 ﻿"""Диагностика зависимостей сервиса."""
 
-from dataclasses import dataclass
 import os
 import subprocess
+from dataclasses import dataclass
 
 from .config import Settings
 

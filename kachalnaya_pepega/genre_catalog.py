@@ -9,7 +9,7 @@ from pathlib import Path
 
 def _load_genre_options() -> list[str]:
     genres_path = Path(__file__).with_name('genres.json')
-    with open(genres_path, 'r', encoding='utf-8-sig') as handle:
+    with open(genres_path, encoding='utf-8-sig') as handle:
         data = json.load(handle)
     if not isinstance(data, list):
         raise ValueError('genres.json must contain a list of genre names')
@@ -78,7 +78,7 @@ class GenreCatalog:
         if not os.path.exists(path):
             return {}
         try:
-            with open(path, 'r', encoding='utf-8-sig') as handle:
+            with open(path, encoding='utf-8-sig') as handle:
                 data = json.load(handle)
             if isinstance(data, dict):
                 return {
